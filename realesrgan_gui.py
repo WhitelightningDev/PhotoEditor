@@ -5,12 +5,13 @@ import threading
 import tkinter as tk
 from tkinter import Label, Button, filedialog, StringVar, Frame, messagebox
 from tkinter import ttk  # For ProgressBar
+from pdf2image import convert_from_path
 
 
 class RealESRGANApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Image Processor")
+        self.root.title("Image Processor - WhiteLightnigDev")
         self.root.geometry("900x500")  # Window size
         self.root.config(bg="#F5F5F5")  # Background color
 
@@ -19,7 +20,7 @@ class RealESRGANApp:
         self.dark_mode = False
 
         # Load custom images
-        self.dark_mode_icon = tk.PhotoImage(file="assets/night-mode.png").subsample(4)
+        self.dark_mode_icon = tk.PhotoImage(file=self.resource_path("assets/night-mode.png")).subsample(5)
 
         # Create a title frame
         self.title_frame = Frame(root, bg="#6200EE", bd=0,
@@ -70,6 +71,16 @@ class RealESRGANApp:
                                      bg="#FF9800", fg="white", font=("Arial", 12, "bold"), relief="flat", padx=10, bd=0)
         self.button_process.grid(row=0, column=1, padx=10, pady=10, sticky='ew')
 
+        # Check Progress button
+        self.button_check_progress = Button(self.button_frame, text="Check Progress", command=self.check_progress,
+                                             bg="#4CAF50", fg="white", font=("Arial", 12, "bold"), relief="flat", padx=10, bd=0)
+        self.button_check_progress.grid(row=0, column=2, padx=10, pady=10, sticky='ew')
+
+        # Cancel button
+        self.button_cancel = Button(self.button_frame, text="Cancel", command=self.cancel_processing,
+                                    bg="#F44336", fg="white", font=("Arial", 12, "bold"), relief="flat", padx=10, bd=0)
+        self.button_cancel.grid(row=0, column=3, padx=10, pady=10, sticky='ew')
+
         # Progress bar
         self.progress = ttk.Progressbar(root, orient="horizontal", length=400, mode="determinate", maximum=100)
         self.progress.pack(pady=10)
@@ -81,18 +92,51 @@ class RealESRGANApp:
 
         # Dark mode toggle button at the bottom right
         self.button_dark_mode = Button(root, image=self.dark_mode_icon, command=self.toggle_dark_mode,
-                                        bg="#9C27B0", fg="white", font=("Arial", 12, "bold"), relief="flat", padx=10, bd=0)
+                                         fg="white", font=("Arial", 12, "bold"), relief="flat", padx=10, bd=0)
         self.button_dark_mode.pack(side='bottom', anchor='se', padx=10, pady=10)
 
         # Bind resizing
         self.root.bind("<Configure>", self.on_resize)
 
+        self.processing_thread = None  # Track processing thread
+
     def load_image(self):
-        file_path = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg *.png")])
+        file_path = filedialog.askopenfilename(filetypes=[
+            ("Image files", "*.jpg *.png *.pdf"),
+            ("HTML files", "*.html *.htm"),
+            ("All files", "*.*")
+        ])
+
         if file_path:
             self.input_file.set(file_path)
-            output_path = os.path.splitext(file_path)[0] + "_output.png"
-            self.output_file.set(output_path)
+
+            if file_path.lower().endswith('.pdf'):
+                # If the input is a PDF, convert it to an image
+                self.process_pdf(file_path)
+
+            elif file_path.lower().endswith(('.html', '.htm')):
+                # If the input is an HTML file, convert it to PDF first
+                pdf_path = self.convert_html_to_pdf(file_path)
+                if pdf_path:
+                    self.process_pdf(pdf_path)
+
+            else:
+                # For image files
+                output_path = os.path.splitext(file_path)[0] + "_output.png"
+                self.output_file.set(output_path)
+
+
+    def process_pdf(self, pdf_path):
+        """Process the PDF and convert its pages to images."""
+        images = convert_from_path(pdf_path)  # Use convert_from_path
+        self.temp_image_paths = []  # Store temporary image paths
+        for i, image in enumerate(images):
+            temp_image_path = f"temp_image_{i}.png"  # Temporary path for each page
+            image.save(temp_image_path, "PNG")  # Save each page as PNG
+            self.temp_image_paths.append(temp_image_path)
+        # Set the output file for the first page processed
+        output_path = os.path.splitext(pdf_path)[0] + "_output.png"
+        self.output_file.set(output_path)
 
     def start_processing(self):
         """Starts the image processing in a new thread."""
@@ -105,16 +149,31 @@ class RealESRGANApp:
             self.output_file.set(output_path)  # Update output path
             self.status_bar.config(text="Status: Processing...")
 
-            processing_thread = threading.Thread(target=self.process_image, args=(output_path,))
-            processing_thread.start()
+            self.processing_thread = threading.Thread(target=self.process_image, args=(output_path,))
+            self.processing_thread.start()
+    def cancel_processing(self):
+        """Cancel the processing thread."""
+        if self.processing_thread and self.processing_thread.is_alive():
+            # Here we would need to properly terminate the process.
+            # This is a placeholder for termination logic.
+            self.status_bar.config(text="Status: Canceled")
+            self.progress.stop()
+            self.progress.pack_forget()
+            self.processing_thread = None
+
+    def check_progress(self):
+        """Open a terminal to show processing output."""
+        input_path = self.input_file.get()
+        if input_path:
+            terminal_command = f'cmd /c "{self.resource_path("realesrgan/realesrgan-ncnn-vulkan.exe")}" -i "{input_path}"'
+            subprocess.Popen(terminal_command, shell=True)
 
     def resource_path(self, relative_path):
-        """Get the absolute path to a resource, works for both dev and PyInstaller"""
+        """ Get the absolute path to a resource, works for both dev and PyInstaller """
         try:
-            base_path = sys._MEIPASS  # PyInstaller creates a temp folder
+            base_path = sys._MEIPASS  # PyInstaller creates a temp folder for resources
         except AttributeError:
-            base_path = os.path.abspath(".")
-
+            base_path = os.path.abspath(".")  # Fall back to current directory in development mode
         return os.path.join(base_path, relative_path)
 
     def process_image(self, output_path):
@@ -124,81 +183,52 @@ class RealESRGANApp:
             self.progress.pack(pady=10)
             self.progress.start()
 
-            # Get the correct path for the executable
+            # Get the correct path for the Real-ESRGAN executable
             executable_path = self.resource_path('realesrgan/realesrgan-ncnn-vulkan.exe')
-            command = f'"{executable_path}" -i "{input_path}" -o "{output_path}"'
+
+            # Construct the command with the model name
+            command = f'"{executable_path}" -i "{input_path}" -o "{output_path}" -n realesrgan-x4plus'
 
             try:
-                # Execute the command and capture output
+                # Execute the command and capture output and errors
                 process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                            text=True)
 
-                # Track progress based on output
-                while True:
-                    output = process.stdout.readline()
-                    if output == '' and process.poll() is not None:
-                        break
-                    if output:
-                        self.update_progress(output.strip())
+                # Log the Real-ESRGAN output
+                for line in process.stdout:
+                    print(line.strip())  # Replace with actual progress handling
 
-                # Hide the progress bar once done
-                self.progress.stop()
-                self.progress.pack_forget()
+                process.wait()  # Wait for the process to finish
 
-                # Show success message
                 self.show_message("Success", f"Image processed and saved as:\n{output_path}")
-                self.status_bar.config(text="Status: Ready")
-
+                self.status_bar.config(text="Status: Done")
             except Exception as e:
-                self.progress.stop()
-                self.progress.pack_forget()
-
-                self.show_message("Error", f"An error occurred: {str(e)}")
+                self.show_message("Exception", str(e))
                 self.status_bar.config(text="Status: Error")
 
-    def update_progress(self, output):
-        """Update progress bar based on the command output."""
-        if output.endswith('%'):
-            try:
-                percentage = float(output.replace('%', ''))
-                self.progress['value'] = percentage  # Update the progress bar value
-                self.status_bar.config(text=f"Status: Processing... {percentage}%")  # Update status with percentage
-            except ValueError:
-                pass  # Handle cases where parsing fails
+            self.update_progress()  # Update progress (you may need to adjust this)
 
-    def toggle_dark_mode(self):
-        """Toggle dark mode on and off."""
-        self.dark_mode = not self.dark_mode
-        bg_color = "#121212" if self.dark_mode else "#F5F5F5"
-        fg_color = "white" if self.dark_mode else "#555"
-        title_bg_color = "#6200EE" if not self.dark_mode else "#3700B3"
-
-        self.root.config(bg=bg_color)
-        self.title_frame.config(bg=title_bg_color)
-        self.title_label.config(bg=title_bg_color, fg="white")
-        self.frame.config(bg=bg_color)
-        self.io_frame.config(bg=bg_color)
-        self.status_bar.config(bg=bg_color, fg=fg_color)
-
-        for widget in self.io_frame.winfo_children():
-            widget.config(bg=bg_color, fg=fg_color)
-
-        for widget in self.button_frame.winfo_children():
-            widget.config(bg="#6200EE" if self.dark_mode else "#FF9800", fg="white")
+    def update_progress(self):
+        """Update the progress based on the output."""
+        # This method should be implemented to interpret output messages for actual progress tracking
+        # This is a placeholder for progress update logic
+        self.progress.stop()
+        self.progress.pack_forget()  # Hide the progress bar when done
 
     def show_message(self, title, message):
         """Show a message box."""
-        self.root.after(0, lambda: messagebox.showinfo(title, message))
+        messagebox.showinfo(title, message)
+
+
 
     def on_resize(self, event):
-        """Adjust widget sizes on window resize."""
-        self.frame.config(width=event.width - 40, height=event.height - 100)
+        """Adjust layout on resize."""
+        width = event.width
+        height = event.height
+        # You can adjust the sizes of widgets here if necessary
 
 
 if __name__ == "__main__":
     root = tk.Tk()
     app = RealESRGANApp(root)
-    try:
-        root.mainloop()
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    root.mainloop()

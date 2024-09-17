@@ -4,12 +4,12 @@ a = Analysis(
     ['realesrgan_gui.py'],
     pathex=['PhotoEditor'],
     binaries=[
-        ('realesrgan/realesrgan-ncnn-vulkan.exe', 'realesrgan/realesrgan-ncnn-vulkan.exe'),
+        ('realesrgan/realesrgan-ncnn-vulkan.exe', 'realesrgan'),  # Adjusted path
     ],
     datas=[
-        ('realesrgan', 'realesrgan'),
-        ('assets', 'assets'),
-        ('realesrgan/models', 'realesrgan/models'),
+     ('assets', 'assets'),  # Ensures assets folder is included
+        ('realesrgan', 'realesrgan'),  # Ensure this copies the entire folder
+        ('realesrgan/models', 'realesrgan/models'),  # Ensure this is correct if models are inside realesrgan
     ],
     hiddenimports=[],
     hookspath=[],
@@ -35,10 +35,12 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=True,
+    console=False,  # Keep console to see errors or use False and log output to a file
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='assets/magic-wand.ico',  # Add your icon file here
 )
+
