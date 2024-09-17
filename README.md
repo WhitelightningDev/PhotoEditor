@@ -4,6 +4,8 @@
 
 The **Real-ESRGAN Image Processor** is a user-friendly application for enhancing images using the Real-ESRGAN model. It allows you to load images, process them with high-quality upscaling, and save the enhanced results. The application features a clean and intuitive graphical user interface (GUI) built with Python's Tkinter library.
 
+![Application Screenshot](assets/screenshot.png)
+
 ## Features
 
 - **Load Images**: Select images from your file system for processing.
