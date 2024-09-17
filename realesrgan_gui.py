@@ -1,4 +1,5 @@
 import os
+import sys
 import subprocess
 import threading
 import tkinter as tk
@@ -107,6 +108,15 @@ class RealESRGANApp:
             processing_thread = threading.Thread(target=self.process_image, args=(output_path,))
             processing_thread.start()
 
+    def resource_path(self, relative_path):
+        """Get the absolute path to a resource, works for both dev and PyInstaller"""
+        try:
+            base_path = sys._MEIPASS  # PyInstaller creates a temp folder
+        except AttributeError:
+            base_path = os.path.abspath(".")
+
+        return os.path.join(base_path, relative_path)
+
     def process_image(self, output_path):
         input_path = self.input_file.get()
         if input_path:
@@ -114,12 +124,14 @@ class RealESRGANApp:
             self.progress.pack(pady=10)
             self.progress.start()
 
-            # Run the image processing command
-            command = f'"C:\\Users\\DellUser\\IdeaProjects\\PhotoEditor\\realesrgan\\realesrgan-ncnn-vulkan.exe" -i "{input_path}" -o "{output_path}" -s 1'
+            # Get the correct path for the executable
+            executable_path = self.resource_path('realesrgan/realesrgan-ncnn-vulkan.exe')
+            command = f'"{executable_path}" -i "{input_path}" -o "{output_path}"'
 
             try:
                 # Execute the command and capture output
-                process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                           text=True)
 
                 # Track progress based on output
                 while True:
