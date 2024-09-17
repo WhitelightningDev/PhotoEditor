@@ -11,7 +11,7 @@ from pdf2image import convert_from_path
 class RealESRGANApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Image Processor - WhiteLightnigDev")
+        self.root.title("Image Processor - WhiteLightningDev")
         self.root.geometry("900x500")  # Window size
         self.root.config(bg="#F5F5F5")  # Background color
 
@@ -90,10 +90,7 @@ class RealESRGANApp:
         self.status_bar = Label(root, text="Status: Ready", bg="#F5F5F5", font=("Arial", 10))
         self.status_bar.pack(side='bottom', fill='x')
 
-        # Dark mode toggle button at the bottom right
-        self.button_dark_mode = Button(root, image=self.dark_mode_icon, command=self.toggle_dark_mode,
-                                         fg="white", font=("Arial", 12, "bold"), relief="flat", padx=10, bd=0)
-        self.button_dark_mode.pack(side='bottom', anchor='se', padx=10, pady=10)
+
 
         # Bind resizing
         self.root.bind("<Configure>", self.on_resize)
